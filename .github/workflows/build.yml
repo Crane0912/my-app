@@ -7,33 +7,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 解压源码
+      - name: 解压并诊断
         run: |
           Z=$(find . -maxdepth 1 -name '*.zip' | head -1)
+          echo "### zip: $Z"
           unzip -q "$Z" -d src
+          echo "### 顶层"
           ls src
+          echo "### 关键文件"
+          find src -maxdepth 3 \( -name gradlew -o -name 'settings.gradle*' -o -name 'build.gradle*' \)
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: 配置 Android SDK
+      - name: 编译
         run: |
-          SDK=/usr/local/lib/android/sdk
-          [ -d "$SDK" ] || SDK=$ANDROID_HOME
-          echo "ANDROID_HOME=$SDK" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$SDK" >> $GITHUB_ENV
-          SM=$(find "$SDK" -name sdkmanager -type f 2>/dev/null | head -1)
-          [ -n "$SM" ] && yes | "$SM" --licenses > /dev/null 2>&1
-          exit 0
-
-      - name: 授权并编译
-        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
           GW=$(find src -name gradlew -type f | head -1)
-          DIR=$(dirname "$GW")
-          chmod +x "$GW"
-          cd "$DIR"
+          if [ -z "$GW" ]; then echo "::error::未找到 gradlew"; exit 1; fi
+          sed -i 's/\r$//' "$GW"
+          chmod 755 "$GW"
+          cd "$(dirname "$GW")"
           ./gradlew assembleDebug --stacktrace
 
       - uses: actions/upload-artifact@v4
