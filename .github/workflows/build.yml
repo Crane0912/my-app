@@ -11,13 +11,22 @@ jobs:
         run: |
           Z=$(find . -maxdepth 1 -name '*.zip' | head -1)
           unzip -q "$Z" -d src
+          ls src
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: 配置 Android SDK
+        run: |
+          SDK=/usr/local/lib/android/sdk
+          [ -d "$SDK" ] || SDK=$ANDROID_HOME
+          echo "ANDROID_HOME=$SDK" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$SDK" >> $GITHUB_ENV
+          SM=$(find "$SDK" -name sdkmanager -type f 2>/dev/null | head -1)
+          [ -n "$SM" ] && yes | "$SM" --licenses > /dev/null 2>&1
+          exit 0
 
       - name: 授权并编译
         run: |
